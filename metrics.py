@@ -3,6 +3,7 @@ import numpy as np
 from scipy.signal import find_peaks
 import time
 from scipy.spatial import distance as dist
+from fer import FER
 
 MAX_FRAMES = 120 # modify this to affect calibration period and amount of "lookback"
 EPOCH = time.time()
@@ -10,6 +11,17 @@ RECENT_FRAMES = int(MAX_FRAMES / 10) # modify to affect sensitivity to recent ch
 SIGNIFICANT_BPM_CHANGE = 8
 EYE_BLINK_HEIGHT = .15 # threshold may depend on relative face shape
 FACEMESH_FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10]
+
+hr_times = list(range(0, MAX_FRAMES))
+hr_values = [400] * MAX_FRAMES
+avg_bpms = [0] * MAX_FRAMES
+
+emotion_detector = FER(mtcnn=True)
+
+# for BPM chart
+ax = None
+line = None
+peakpts = None
 
 def get_aspect_ratio(top, bottom, right, left):
   height = dist.euclidean([top.x, top.y], [bottom.x, bottom.y])
@@ -33,9 +45,8 @@ def get_area(image, draw, topL, topR, bottomR, bottomL):
 
 
 def get_bpm_tells(cheekL, cheekR, fps, bpm_chart):
-  global hr_times, hr_values, avg_bpms
-  global ax, line, peakpts
-
+  global hr_values, hr_times, avg_bpms
+    
   cheekLwithoutBlue = np.average(cheekL[:, :, 1:3])
   cheekRwithoutBlue = np.average(cheekR[:, :, 1:3])
   hr_values = hr_values[1:] + [cheekLwithoutBlue + cheekRwithoutBlue]
@@ -160,8 +171,7 @@ def get_gaze(face, iris_L_side, iris_R_side, eye_L_corner, eye_R_corner):
 
 
 def detect_gaze_change(avg_gaze):
-  global gaze_values
-
+  gaze_values = [0] * MAX_FRAMES
   gaze_values = gaze_values[1:] + [avg_gaze]
   gaze_relative_matches = 1.0 * gaze_values.count(avg_gaze) / MAX_FRAMES
   if gaze_relative_matches < .01: # looking in a new direction
@@ -174,10 +184,8 @@ def get_lip_ratio(face):
 
 
 def get_mood(image):
-  global emotion_detector, calculating_mood, mood
-
+  global mood
   detected_mood, score = emotion_detector.top_emotion(image)
-  calculating_mood = False
   if score and (score > .4 or detected_mood == 'neutral'):
     mood = detected_mood
     

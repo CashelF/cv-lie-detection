@@ -11,14 +11,13 @@ import numpy as np
 from scipy.signal import find_peaks
 from scipy.spatial import distance as dist
 
-from fer import FER
-
 import time
 import sys
 
-from deception import process, process_second
+from deception import process
+from metrics import find_face_and_hands, is_blinking, check_hand_on_face, get_face_relative_area, hr_times, hr_values
 
-MAX_FRAMES = 120 # modify this to affect calibration period and amount of "lookback"
+from globals import *
 
 TELL_MAX_TTL = 30 # how long to display a finding, optionally set in args
 
@@ -29,38 +28,15 @@ TEXT_HEIGHT = 30
 
 recording = None
 
-tells = dict()
-
-blinks = [False] * MAX_FRAMES
-blinks2 = [False] * MAX_FRAMES # for mirroring
-
-hand_on_face = [False] * MAX_FRAMES
-hand_on_face2 = [False] * MAX_FRAMES # for mirroring
-
 face_area_size = 0 # relative size of face to total frame
 
-hr_times = list(range(0, MAX_FRAMES))
-hr_values = [400] * MAX_FRAMES
-avg_bpms = [0] * MAX_FRAMES
-
-gaze_values = [0] * MAX_FRAMES
-
-emotion_detector = FER(mtcnn=True)
-calculating_mood = False
-mood = ''
 
 meter = cv2.imread('meter.png')
 
 # BPM chart
 fig = None
-ax = None
-line = None
-peakpts = None
 
 def main():
-  global TELL_MAX_TTL
-  global recording
-
   parser = argparse.ArgumentParser()
   parser.add_argument('--input', '-i', nargs='*', help='Input video device (number or path), file, or screen dimensions (x y width height), defaults to 0', default=['0'])
   parser.add_argument('--landmarks', '-l', help='Set to any value to draw face and hand landmarks')
@@ -112,7 +88,23 @@ def main():
           while True:
             image = np.array(sct.grab(screen))[:, :, :3] # remove alpha channel
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, BPM_CHART, FLIP)
+            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, BPM_CHART)
+            
+            # Update chart/landmarks
+            if BPM_CHART: # update chart
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+
+            if DRAW_LANDMARKS: # overlay face and hand landmarks
+                face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
+                draw_on_frame(image, face_landmarks, hands_landmarks)
+
+            if FLIP:
+                image = cv2.flip(image, 1) # flip image horizontally
+
+            add_text(image, tells, calibrated)
+            add_truth_meter(image, len(tells))
+        
             calibrated = (calibration_frames >= MAX_FRAMES)
             if SECOND:
               process_second(cap2, image, face_mesh, hands)
@@ -141,17 +133,30 @@ def main():
             RECORDING_FILENAME, cv2.VideoWriter_fourcc(*'MJPG'), FPS_OUT, FRAME_SIZE)
 
         while cap.isOpened():
-          success, image = cap.read()
-          if not success: break
-          calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, BPM_CHART, FLIP, fps)
-          calibrated = (calibration_frames >= MAX_FRAMES)
-          if SECOND:
-            process_second(cap2, image, face_mesh, hands)
-          cv2.imshow('face', image)
-          if RECORD:
-            recording.write(image)
-          if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            success, image = cap.read()
+            if not success: break
+            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, BPM_CHART, fps)
+          
+            # Update chart/landmarks
+            if BPM_CHART: # update chart
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+
+            if DRAW_LANDMARKS: # overlay face and hand landmarks
+                face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
+                draw_on_frame(image, face_landmarks, hands_landmarks)
+
+            if FLIP:
+                image = cv2.flip(image, 1) # flip image horizontally
+                
+            calibrated = (calibration_frames >= MAX_FRAMES)
+            if SECOND:
+                process_second(cap2, image, face_mesh, hands)
+                cv2.imshow('face', image)
+            if RECORD:
+                recording.write(image)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
         cap.release()
         if SECOND:
@@ -161,8 +166,6 @@ def main():
   cv2.destroyAllWindows()
   
 def chart_setup():
-  global fig, ax, line, peakpts
-
   plt.ion()
   fig = plt.figure()
   ax = fig.add_subplot(1,1,1) # 1st 1x1 subplot
@@ -196,7 +199,6 @@ def draw_on_frame(image, face_landmarks, hands_landmarks):
     
 def add_text(image, tells, calibrated):
   global mood
-
   text_y = TEXT_HEIGHT
   if mood:
     write("Mood: {}".format(mood), image, int(.75 * image.shape[1]), TEXT_HEIGHT)
@@ -225,3 +227,48 @@ def add_truth_meter(image, tell_count):
   if tell_count:
     tellX = bg + int(bg/4) * (tell_count - 1) # adjust for always-on BPM
     cv2.rectangle(image, (tellX, int(.9*sm)), (tellX+int(sm/2), int(2.1*sm)), (0,0,0), 2)
+    
+# process optional second input for mirroring
+def process_second(cap, image, face_mesh, hands):
+  global blinks2, hand_on_face2, face_area_size2
+
+  success2, image2 = cap.read()
+  if success2:
+    face_landmarks2, hands_landmarks2 = find_face_and_hands(image2, face_mesh, hands)
+
+    if face_landmarks2:
+      face2 = face_landmarks2.landmark
+
+      blinks2 = blinks2[1:] + [is_blinking(face2)]
+      blink_mirror = get_blink_comparison(blinks, blinks2)
+
+      hand_on_face2 = hand_on_face2[1:] + [check_hand_on_face(hands_landmarks2, face2)]
+      hand_face_mirror = get_hand_face_comparison(hand_on_face, hand_on_face2)
+
+      face_area_size2 = get_face_relative_area(face2)
+      face_ratio_mirror = get_face_size_comparison(face_area_size, face_area_size2)
+
+      text_y = 2 * TEXT_HEIGHT # show prompts below 'mood' on right side
+      for comparison in [blink_mirror, hand_face_mirror, face_ratio_mirror]:
+        if comparison:
+          write(comparison, image, int(.75 * image.shape[1]), text_y)
+          text_y += TEXT_HEIGHT
+          
+def mirror_compare(first, second, rate, less, more):
+  if (rate * first) < second:
+    return less
+  elif first > (rate * second):
+    return more
+  return None
+
+def get_blink_comparison(blinks1, blinks2):
+  return mirror_compare(sum(blinks1), sum(blinks2), 1.8, "Blink less", "Blink more")
+
+def get_hand_face_comparison(hand1, hand2):
+  return mirror_compare(sum(hand1), sum(hand2), 2.1, "Stop touching face", "Touch face more")
+
+def get_face_size_comparison(ratio1, ratio2):
+  return mirror_compare(ratio1, ratio2, 1.5, "Too close", "Too far")
+
+if __name__ == "__main__":
+    main()
