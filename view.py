@@ -23,9 +23,6 @@ TELL_MAX_TTL = 30 # how long to display a finding, optionally set in args
 
 TEXT_HEIGHT = 30
 
-
-
-
 recording = None
 
 face_area_size = 0 # relative size of face to total frame
@@ -44,7 +41,6 @@ def main():
   parser.add_argument('--flip', '-f', help='Set to any value to flip resulting output (selfie view)')
   parser.add_argument('--ttl', '-t', help='How many frames for each displayed "tell" to last, defaults to 30', default='30')
   parser.add_argument('--record', '-r', help='Set to any value to save a timestamped AVI in current directory')
-  parser.add_argument('--second', '-s', help='Secondary video input device (number or path)')
   args = parser.parse_args()
 
   if len(args.input) == 1:
@@ -59,13 +55,8 @@ def main():
     TELL_MAX_TTL = int(args.ttl)
   RECORD = args.record is not None
 
-  SECOND = int(args.second) if (args.second or "").isdigit() else args.second
-
   if BPM_CHART:
     chart_setup()
-
-  if SECOND:
-    cap2 = cv2.VideoCapture(SECOND)
 
   calibrated = False
   calibration_frames = 0
@@ -106,8 +97,6 @@ def main():
             add_truth_meter(image, len(tells))
         
             calibrated = (calibration_frames >= MAX_FRAMES)
-            if SECOND:
-              process_second(cap2, image, face_mesh, hands)
             cv2.imshow('face', image)
             if RECORD:
               recording.write(image)
@@ -150,17 +139,12 @@ def main():
                 image = cv2.flip(image, 1) # flip image horizontally
                 
             calibrated = (calibration_frames >= MAX_FRAMES)
-            if SECOND:
-                process_second(cap2, image, face_mesh, hands)
-                cv2.imshow('face', image)
             if RECORD:
                 recording.write(image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         cap.release()
-        if SECOND:
-          cap2.release()
         if RECORD:
           recording.release()
   cv2.destroyAllWindows()
@@ -227,48 +211,7 @@ def add_truth_meter(image, tell_count):
   if tell_count:
     tellX = bg + int(bg/4) * (tell_count - 1) # adjust for always-on BPM
     cv2.rectangle(image, (tellX, int(.9*sm)), (tellX+int(sm/2), int(2.1*sm)), (0,0,0), 2)
-    
-# process optional second input for mirroring
-def process_second(cap, image, face_mesh, hands):
-  global blinks2, hand_on_face2, face_area_size2
 
-  success2, image2 = cap.read()
-  if success2:
-    face_landmarks2, hands_landmarks2 = find_face_and_hands(image2, face_mesh, hands)
-
-    if face_landmarks2:
-      face2 = face_landmarks2.landmark
-
-      blinks2 = blinks2[1:] + [is_blinking(face2)]
-      blink_mirror = get_blink_comparison(blinks, blinks2)
-
-      hand_on_face2 = hand_on_face2[1:] + [check_hand_on_face(hands_landmarks2, face2)]
-      hand_face_mirror = get_hand_face_comparison(hand_on_face, hand_on_face2)
-
-      face_area_size2 = get_face_relative_area(face2)
-      face_ratio_mirror = get_face_size_comparison(face_area_size, face_area_size2)
-
-      text_y = 2 * TEXT_HEIGHT # show prompts below 'mood' on right side
-      for comparison in [blink_mirror, hand_face_mirror, face_ratio_mirror]:
-        if comparison:
-          write(comparison, image, int(.75 * image.shape[1]), text_y)
-          text_y += TEXT_HEIGHT
-          
-def mirror_compare(first, second, rate, less, more):
-  if (rate * first) < second:
-    return less
-  elif first > (rate * second):
-    return more
-  return None
-
-def get_blink_comparison(blinks1, blinks2):
-  return mirror_compare(sum(blinks1), sum(blinks2), 1.8, "Blink less", "Blink more")
-
-def get_hand_face_comparison(hand1, hand2):
-  return mirror_compare(sum(hand1), sum(hand2), 2.1, "Stop touching face", "Touch face more")
-
-def get_face_size_comparison(ratio1, ratio2):
-  return mirror_compare(ratio1, ratio2, 1.5, "Too close", "Too far")
 
 if __name__ == "__main__":
     main()
