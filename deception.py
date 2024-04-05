@@ -3,11 +3,10 @@ import threading
 from globals import *
 
 LIP_COMPRESSION_RATIO = .35 # from testing, ~universal
-TELL_MAX_TTL = 30 # how long to display a finding, optionally set in args
 calculating_mood_lock = threading.Lock()
 
 
-def process(image, face_mesh, hands, calibrated=False, draw=False, bpm_chart=False, fps=None):
+def process(image, face_mesh, hands, calibrated=False, draw=False, fps=None):
   global tells, blinks, hand_on_face, calculating_mood_lock
   tells = decrement_tells(tells)
 
@@ -27,7 +26,7 @@ def process(image, face_mesh, hands, calibrated=False, draw=False, bpm_chart=Fal
     cheekL = get_area(image, draw, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
     cheekR = get_area(image, draw, topL=face[121], topR=face[229], bottomR=face[50], bottomL=face[209])
 
-    avg_bpms, bpm_change = get_bpm_tells(cheekL, cheekR, fps, bpm_chart)
+    avg_bpms, bpm_change = get_bpm_tells(cheekL, cheekR, fps)
     tells['avg_bpms'] = new_tell(avg_bpms) # always show "..." if BPM missing
     if len(bpm_change):
       tells['bpm_change'] = new_tell(bpm_change)
@@ -70,5 +69,5 @@ def decrement_tells(tells):
 def new_tell(result):
   return {
     'text': result,
-    'ttl': TELL_MAX_TTL
+    'ttl': 30
   }

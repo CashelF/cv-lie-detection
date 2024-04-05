@@ -7,7 +7,7 @@ from fer import FER
 
 MAX_FRAMES = 120 # modify this to affect calibration period and amount of "lookback"
 EPOCH = time.time()
-RECENT_FRAMES = int(MAX_FRAMES / 10) # modify to affect sensitivity to recent changes
+RECENT_FRAMES = int(MAX_FRAMES / 10) # modify to affect 2sensitivity to recent changes
 SIGNIFICANT_BPM_CHANGE = 8
 EYE_BLINK_HEIGHT = .15 # threshold may depend on relative face shape
 FACEMESH_FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10]
@@ -44,7 +44,7 @@ def get_area(image, draw, topL, topR, bottomR, bottomL):
   return image[topY:botY, rightX:leftX]
 
 
-def get_bpm_tells(cheekL, cheekR, fps, bpm_chart):
+def get_bpm_tells(cheekL, cheekR, fps):
   global hr_values, hr_times, avg_bpms
     
   cheekLwithoutBlue = np.average(cheekL[:, :, 1:3])
@@ -53,11 +53,6 @@ def get_bpm_tells(cheekL, cheekR, fps, bpm_chart):
 
   if not fps:
     hr_times = hr_times[1:] + [time.time() - EPOCH]
-
-  if bpm_chart:
-    line.set_data(hr_times, hr_values)
-    ax.relim()
-    ax.autoscale()
 
   peaks, _ = find_peaks(hr_values,
     threshold=.1,
@@ -68,8 +63,6 @@ def get_bpm_tells(cheekL, cheekR, fps, bpm_chart):
 
   peak_times = [hr_times[i] for i in peaks]
 
-  if bpm_chart:
-    peakpts.set_data(peak_times, [hr_values[i] for i in peaks])
 
   bpms = 60 * np.diff(peak_times) / (fps or 1)
   bpms = bpms[(bpms > 50) & (bpms < 150)] # filter to reasonable BPM range

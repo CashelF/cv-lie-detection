@@ -19,8 +19,6 @@ from metrics import find_face_and_hands, is_blinking, check_hand_on_face, get_fa
 
 from globals import *
 
-TELL_MAX_TTL = 30 # how long to display a finding, optionally set in args
-
 TEXT_HEIGHT = 30
 
 recording = None
@@ -37,9 +35,6 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--input', '-i', nargs='*', help='Input video device (number or path), file, or screen dimensions (x y width height), defaults to 0', default=['0'])
   parser.add_argument('--landmarks', '-l', help='Set to any value to draw face and hand landmarks')
-  parser.add_argument('--bpm', '-b', help='Set to any value to draw color chart for heartbeats')
-  parser.add_argument('--flip', '-f', help='Set to any value to flip resulting output (selfie view)')
-  parser.add_argument('--ttl', '-t', help='How many frames for each displayed "tell" to last, defaults to 30', default='30')
   parser.add_argument('--record', '-r', help='Set to any value to save a timestamped AVI in current directory')
   args = parser.parse_args()
 
@@ -49,14 +44,8 @@ def main():
     return print("Wrong number of values for 'input' argument; should be 0, 1, or 4.")
 
   DRAW_LANDMARKS = args.landmarks is not None
-  BPM_CHART = args.bpm is not None
-  FLIP = args.flip is not None
-  if args.ttl and args.ttl.isdigit():
-    TELL_MAX_TTL = int(args.ttl)
   RECORD = args.record is not None
 
-  if BPM_CHART:
-    chart_setup()
 
   calibrated = False
   calibration_frames = 0
@@ -79,19 +68,11 @@ def main():
           while True:
             image = np.array(sct.grab(screen))[:, :, :3] # remove alpha channel
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, BPM_CHART)
+            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS)
             
-            # Update chart/landmarks
-            if BPM_CHART: # update chart
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-
             if DRAW_LANDMARKS: # overlay face and hand landmarks
                 face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
                 draw_on_frame(image, face_landmarks, hands_landmarks)
-
-            if FLIP:
-                image = cv2.flip(image, 1) # flip image horizontally
 
             add_text(image, tells, calibrated)
             add_truth_meter(image, len(tells))
@@ -124,19 +105,11 @@ def main():
         while cap.isOpened():
             success, image = cap.read()
             if not success: break
-            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, BPM_CHART, fps)
-          
-            # Update chart/landmarks
-            if BPM_CHART: # update chart
-                fig.canvas.draw()
-                fig.canvas.flush_events()
+            calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_LANDMARKS, fps)
 
             if DRAW_LANDMARKS: # overlay face and hand landmarks
                 face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
                 draw_on_frame(image, face_landmarks, hands_landmarks)
-
-            if FLIP:
-                image = cv2.flip(image, 1) # flip image horizontally
                 
             calibrated = (calibration_frames >= MAX_FRAMES)
             if RECORD:
