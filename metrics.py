@@ -1,14 +1,17 @@
 import numpy as np
 from scipy.signal import find_peaks
+from fer import FER
 
-import time
+import threading
 
 from config import Config
-from video_processing import crop_image, find_face_and_hands
+from video_processing import crop_image, find_face_and_hands, check_hand_on_face
 
 class MetricsCalculator:
   def __init__(self):
     self.hr_values = [9999] * Config.MAX_FRAMES
+    self.emotion_detector = FER(mtcnn=True)
+    self.current_emotion = None
 
   def collect_metrics(self, image, face_mesh, hands):
     face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
@@ -16,11 +19,14 @@ class MetricsCalculator:
       return None
     face = face_landmarks.landmark
     
-    bpm = self.get_bpm(image, face)
+    bpm = self.get_bpm(image, face) 
     
-    return bpm
+    mood_thread = threading.Thread(target=self.async_get_emotion, args=(image,))
+    mood_thread.start()
     
+    is_hand_on_face = self.get_hand_on_face(hands_landmarks, face)
     
+    return bpm, self.current_emotion, is_hand_on_face
     
   def get_bpm(self, image, face):
     cheekL = crop_image(image, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
@@ -47,5 +53,11 @@ class MetricsCalculator:
     recent_avg_bpm = np.average(recent_bpms).astype(int)
 
     return recent_avg_bpm
+  
+  def async_get_emotion(self, image):
+    detected_emotion, score = self.emotion_detector.top_emotion(image)
+    if score and (score > .4 or detected_emotion == 'neutral'):
+      self.current_emotion = detected_emotion
 
-
+  def get_hand_on_face(self, hands_landmarks, face):
+    return check_hand_on_face(hands_landmarks, face)
