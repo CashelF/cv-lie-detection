@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from scipy.spatial import distance
+import mediapipe as mp
 
 FACEMESH_FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10]
 
@@ -47,3 +48,26 @@ def get_aspect_ratio(top, bottom, right, left):
   height = distance.euclidean([top.x, top.y], [bottom.x, bottom.y])
   width = distance.euclidean([right.x, right.y], [left.x, left.y])
   return height / width
+
+def draw_landmarks_on_frame(image, face_landmarks, hands_landmarks):
+  mp.solutions.drawing_utils.draw_landmarks(
+      image,
+      face_landmarks,
+      mp.solutions.face_mesh.FACEMESH_CONTOURS,
+      landmark_drawing_spec=None,
+      connection_drawing_spec=mp.solutions.drawing_styles
+      .get_default_face_mesh_contours_style())
+  mp.solutions.drawing_utils.draw_landmarks(
+      image,
+      face_landmarks,
+      mp.solutions.face_mesh.FACEMESH_IRISES,
+      landmark_drawing_spec=None,
+      connection_drawing_spec=mp.solutions.drawing_styles
+      .get_default_face_mesh_iris_connections_style())
+  for hand_landmarks in (hands_landmarks or []):
+    mp.solutions.drawing_utils.draw_landmarks(
+        image,
+        hand_landmarks,
+        mp.solutions.hands.HAND_CONNECTIONS,
+        mp.solutions.drawing_styles.get_default_hand_landmarks_style(),
+        mp.solutions.drawing_styles.get_default_hand_connections_style())

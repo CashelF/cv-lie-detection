@@ -5,7 +5,7 @@ from fer import FER
 import threading
 
 from config import Config
-from video_processing import crop_image, find_face_and_hands, check_hand_on_face, get_aspect_ratio
+from video_processing import crop_image, check_hand_on_face, get_aspect_ratio
 
 class MetricsCalculator:
   def __init__(self):
@@ -14,10 +14,7 @@ class MetricsCalculator:
     self.current_emotion = None
     self.mood_thread = None
 
-  def collect_metrics(self, image, face_mesh, hands):
-    face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
-    if not face_landmarks:
-      return None
+  def collect_metrics(self, image, face_landmarks, hands_landmarks):
     face = face_landmarks.landmark
     
     bpm = self.get_bpm(image, face) 

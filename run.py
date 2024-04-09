@@ -6,6 +6,8 @@ import mediapipe as mp
 from config import Config
 from metrics import MetricsCalculator
 
+from video_processing import find_face_and_hands, draw_landmarks_on_frame
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--input', '-i', nargs='*', default=['0'], help='Input video device (number or path), file, or screen dimensions (x y width height), defaults to 0')
@@ -38,11 +40,15 @@ def main():
     while cap.isOpened():
       success, image = cap.read()
       if not success: break
-      # calibration_frames += process(image, face_mesh, hands, calibrated, DRAW_MESH, fps)
-      # calibrated = (calibration_frames >= Config.MAX_FRAMES)
-      metrics = metrics_calculator.collect_metrics(image, face_mesh, hands)
+
+      face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
+      if not face_landmarks: 
+        continue
+      
+      metrics = metrics_calculator.collect_metrics(image, face_landmarks, hands_landmarks)
       print("Metrics:", metrics)
       
+      draw_landmarks_on_frame(image, face_landmarks, hands_landmarks)
       cv2.imshow('face', image)
       if cv2.waitKey(1) & 0xFF == ord('q'):
         break
