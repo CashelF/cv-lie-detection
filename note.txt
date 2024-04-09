@@ -1,0 +1,13 @@
+Train a model using a dataframe for each of the videos, where each feature is a series/list of deltas for each of the metrics (like how different is the gaze of this person compared to their baseline), and each label is if the video was a lie or not. Just figure out a way on how to represent the series/list for each of the deltas of the features and how that would feed into a model.
+
+develop a baseline by averaging all of the values for the metrics over the course of the video (like the average blink rate throuout the whole video), each feature is a time series of the deltas for that metrics
+
+blink_rate
+[0.2, 0.3, 0.1, 0.01, 0.9, 0.8, 0.9, 0.7] # 0.2 is 20% of max value or something like that
+
+probably can't do deep learning because not enough data
+
+the baseline needs to be a running average because the difference between each individual time step is effectively 0 (each time step is like 1/10 of a second or something)
+
+List of metrics:
+BPM, Blinking, hand on face, gaze, lip compression, mood
