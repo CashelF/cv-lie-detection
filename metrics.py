@@ -12,6 +12,7 @@ class MetricsCalculator:
     self.hr_values = [9999] * Config.MAX_FRAMES
     self.emotion_detector = FER(mtcnn=True)
     self.current_emotion = None
+    self.mood_thread = None
 
   def collect_metrics(self, image, face_mesh, hands):
     face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
@@ -21,8 +22,9 @@ class MetricsCalculator:
     
     bpm = self.get_bpm(image, face) 
     
-    mood_thread = threading.Thread(target=self.async_get_emotion, args=(image,))
-    mood_thread.start()
+    if self.mood_thread is None or not self.mood_thread.is_alive():
+      self.mood_thread = threading.Thread(target=self.async_get_emotion, args=(image,))
+      self.mood_thread.start()
     
     is_hand_on_face = self.get_hand_on_face(hands_landmarks, face)
     
