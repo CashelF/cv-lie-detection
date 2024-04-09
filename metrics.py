@@ -5,11 +5,11 @@ from fer import FER
 import threading
 
 from config import Config
-from video_processing import crop_image, check_hand_on_face, get_aspect_ratio, get_avg_gaze, get_is_blinking
+from video_processing import check_hand_on_face, get_aspect_ratio, get_avg_gaze, get_is_blinking, get_cheeks_intensity_without_blue_avg
 
 class MetricsCalculator:
   def __init__(self):
-    self.hr_values = [9999] * Config.MAX_FRAMES
+    self.cheek_color_values = [9999] * Config.MAX_FRAMES
     self.gaze_values = [0] * Config.MAX_FRAMES
     self.blinks = [False] * Config.MAX_FRAMES
     self.emotion_detector = FER(mtcnn=True)
@@ -19,8 +19,9 @@ class MetricsCalculator:
   def collect_metrics(self, image, face_landmarks, hands_landmarks):
     face = face_landmarks.landmark
     
-    # TODO: update hr_values outside of get_bpm for better encapsulation
-    bpm = self.get_bpm(image, face) 
+    cheeks_intensity_withoutBlue = get_cheeks_intensity_without_blue_avg(image, face)
+    self.update_cheek_color_values(cheeks_intensity_withoutBlue) # TODO: update outside of collect metrics for better encapsulation
+    bpm = self.get_bpm()
     
     if self.mood_thread is None or not self.mood_thread.is_alive():
       self.mood_thread = threading.Thread(target=self.async_get_emotion, args=(image,))
@@ -39,15 +40,11 @@ class MetricsCalculator:
     
     return bpm, self.current_emotion, is_hand_on_face, lip_compression_ratio, gaze_change, blink_rate
     
-  def get_bpm(self, image, face):
-    cheekL = crop_image(image, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
-    cheekR = crop_image(image, topL=face[121], topR=face[229], bottomR=face[50], bottomL=face[209])
-
-    cheekLwithoutBlue = np.average(cheekL[:, :, 1:3])
-    cheekRwithoutBlue = np.average(cheekR[:, :, 1:3])
-    self.hr_values = self.hr_values[1:] + [cheekLwithoutBlue + cheekRwithoutBlue]
-
-    peak_frames, _ = find_peaks(self.hr_values,
+  def update_cheek_color_values(self, cheeks_color_value):
+    self.cheek_color_values = self.cheek_color_values[1:] + [cheeks_color_value]
+    
+  def get_bpm(self):
+    peak_frames, _ = find_peaks(self.cheek_color_values,
       threshold=.1,
       distance=5,
       prominence=.5,
@@ -73,10 +70,8 @@ class MetricsCalculator:
   def get_hand_on_face(self, hands_landmarks, face):
     return check_hand_on_face(hands_landmarks, face)
 
-
   def get_lip_ratio(self, face):
     return get_aspect_ratio(face[0], face[17], face[61], face[291])
-  
   
   def detect_gaze_change(self, avg_gaze):
     self.gaze_values = self.gaze_values[1:] + [avg_gaze]
@@ -84,7 +79,6 @@ class MetricsCalculator:
     if gaze_relative_matches < .01: # looking in a new direction
       return True
     return False
-  
   
   def update_blinks(self, is_blinking):
     self.blinks = self.blinks[1:] + [is_blinking]

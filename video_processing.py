@@ -28,6 +28,15 @@ def find_face_and_hands(image_original, face_mesh, hands):
 
   return face_landmarks, hands_landmarks
 
+def get_cheeks_intensity_without_blue_avg(image, face):
+    cheekL = crop_image(image, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
+    cheekR = crop_image(image, topL=face[121], topR=face[229], bottomR=face[50], bottomL=face[209])
+
+    cheekLwithoutBlue = np.average(cheekL[:, :, 1:3])
+    cheekRwithoutBlue = np.average(cheekR[:, :, 1:3])
+    
+    return cheekLwithoutBlue + cheekRwithoutBlue
+
 def check_hand_on_face(hands_landmarks, face):
   if hands_landmarks:
     face_landmarks = [face[p] for p in FACEMESH_FACE_OVAL]
