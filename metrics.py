@@ -5,12 +5,13 @@ from fer import FER
 import threading
 
 from config import Config
-from video_processing import crop_image, check_hand_on_face, get_aspect_ratio, get_avg_gaze
+from video_processing import crop_image, check_hand_on_face, get_aspect_ratio, get_avg_gaze, get_is_blinking
 
 class MetricsCalculator:
   def __init__(self):
     self.hr_values = [9999] * Config.MAX_FRAMES
     self.gaze_values = [0] * Config.MAX_FRAMES
+    self.blinks = [False] * Config.MAX_FRAMES
     self.emotion_detector = FER(mtcnn=True)
     self.current_emotion = None
     self.mood_thread = None
@@ -18,6 +19,7 @@ class MetricsCalculator:
   def collect_metrics(self, image, face_landmarks, hands_landmarks):
     face = face_landmarks.landmark
     
+    # TODO: update hr_values outside of get_bpm for better encapsulation
     bpm = self.get_bpm(image, face) 
     
     if self.mood_thread is None or not self.mood_thread.is_alive():
@@ -31,7 +33,11 @@ class MetricsCalculator:
     avg_gaze = get_avg_gaze(face)
     gaze_change = self.detect_gaze_change(avg_gaze)
     
-    return bpm, self.current_emotion, is_hand_on_face, lip_compression_ratio, gaze_change
+    is_blinking = get_is_blinking(face)
+    self.update_blinks(is_blinking) # TODO: update outside of collect metrics for better encapsulation
+    blink_rate = self.get_blink_rate()
+    
+    return bpm, self.current_emotion, is_hand_on_face, lip_compression_ratio, gaze_change, blink_rate
     
   def get_bpm(self, image, face):
     cheekL = crop_image(image, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
@@ -78,3 +84,10 @@ class MetricsCalculator:
     if gaze_relative_matches < .01: # looking in a new direction
       return True
     return False
+  
+  
+  def update_blinks(self, is_blinking):
+    self.blinks = self.blinks[1:] + [is_blinking]
+    
+  def get_blink_rate(self):
+    return sum(self.blinks) / len(self.blinks)

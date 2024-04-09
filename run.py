@@ -39,7 +39,8 @@ def main():
     metrics_calculator = MetricsCalculator()
     while cap.isOpened():
       success, image = cap.read()
-      if not success: break
+      if not success: 
+        break
 
       face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
       if not face_landmarks: 

@@ -4,6 +4,7 @@ from scipy.spatial import distance
 import mediapipe as mp
 
 FACEMESH_FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10]
+EYE_BLINK_HEIGHT = .15 # threshold may depend on relative face shape
 
 def crop_image(image, topL, topR, bottomR, bottomL):
   topY = int((topR.y+topL.y)/2 * image.shape[0])
@@ -95,3 +96,13 @@ def get_avg_gaze(face):
   gaze_left = get_gaze(face, 476, 474, 263, 362)
   gaze_right = get_gaze(face, 471, 469, 33, 133)
   return round((gaze_left + gaze_right) / 2, 1)
+
+def get_is_blinking(face):
+  eyeR = [face[p] for p in [159, 145, 133, 33]]
+  eyeR_ar = get_aspect_ratio(*eyeR)
+
+  eyeL = [face[p] for p in [386, 374, 362, 263]]
+  eyeL_ar = get_aspect_ratio(*eyeL)
+
+  eyeA_ar = (eyeR_ar + eyeL_ar) / 2
+  return eyeA_ar < EYE_BLINK_HEIGHT
