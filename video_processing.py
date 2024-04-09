@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from scipy.spatial import distance
 
 FACEMESH_FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109, 10]
 
@@ -41,3 +42,8 @@ def check_hand_on_face(hands_landmarks, face):
         if overlap != -1:
           return True
   return False
+
+def get_aspect_ratio(top, bottom, right, left):
+  height = distance.euclidean([top.x, top.y], [bottom.x, bottom.y])
+  width = distance.euclidean([right.x, right.y], [left.x, left.y])
+  return height / width

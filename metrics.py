@@ -5,7 +5,7 @@ from fer import FER
 import threading
 
 from config import Config
-from video_processing import crop_image, find_face_and_hands, check_hand_on_face
+from video_processing import crop_image, find_face_and_hands, check_hand_on_face, get_aspect_ratio
 
 class MetricsCalculator:
   def __init__(self):
@@ -28,7 +28,9 @@ class MetricsCalculator:
     
     is_hand_on_face = self.get_hand_on_face(hands_landmarks, face)
     
-    return bpm, self.current_emotion, is_hand_on_face
+    lip_compression_ratio = self.get_lip_ratio(face)
+    
+    return bpm, self.current_emotion, is_hand_on_face, lip_compression_ratio
     
   def get_bpm(self, image, face):
     cheekL = crop_image(image, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
@@ -63,3 +65,7 @@ class MetricsCalculator:
 
   def get_hand_on_face(self, hands_landmarks, face):
     return check_hand_on_face(hands_landmarks, face)
+
+
+  def get_lip_ratio(self, face):
+    return get_aspect_ratio(face[0], face[17], face[61], face[291])
