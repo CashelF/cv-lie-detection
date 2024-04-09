@@ -71,3 +71,27 @@ def draw_landmarks_on_frame(image, face_landmarks, hands_landmarks):
         mp.solutions.hands.HAND_CONNECTIONS,
         mp.solutions.drawing_styles.get_default_hand_landmarks_style(),
         mp.solutions.drawing_styles.get_default_hand_connections_style())
+    
+def get_gaze(face, iris_L_side, iris_R_side, eye_L_corner, eye_R_corner):
+  iris = (
+    face[iris_L_side].x + face[iris_R_side].x,
+    face[iris_L_side].y + face[iris_R_side].y,
+  )
+  eye_center = (
+    face[eye_L_corner].x + face[eye_R_corner].x,
+    face[eye_L_corner].y + face[eye_R_corner].y,
+  )
+
+  gaze_dist = distance.euclidean(iris, eye_center)
+  eye_width = abs(face[eye_R_corner].x - face[eye_L_corner].x)
+  gaze_relative = gaze_dist / eye_width
+
+  if (eye_center[0] - iris[0]) < 0: # flip along x for looking L vs R
+    gaze_relative *= -1
+
+  return gaze_relative
+
+def get_avg_gaze(face):
+  gaze_left = get_gaze(face, 476, 474, 263, 362)
+  gaze_right = get_gaze(face, 471, 469, 33, 133)
+  return round((gaze_left + gaze_right) / 2, 1)

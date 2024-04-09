@@ -5,11 +5,12 @@ from fer import FER
 import threading
 
 from config import Config
-from video_processing import crop_image, check_hand_on_face, get_aspect_ratio
+from video_processing import crop_image, check_hand_on_face, get_aspect_ratio, get_avg_gaze
 
 class MetricsCalculator:
   def __init__(self):
     self.hr_values = [9999] * Config.MAX_FRAMES
+    self.gaze_values = [0] * Config.MAX_FRAMES
     self.emotion_detector = FER(mtcnn=True)
     self.current_emotion = None
     self.mood_thread = None
@@ -27,7 +28,10 @@ class MetricsCalculator:
     
     lip_compression_ratio = self.get_lip_ratio(face)
     
-    return bpm, self.current_emotion, is_hand_on_face, lip_compression_ratio
+    avg_gaze = get_avg_gaze(face)
+    gaze_change = self.detect_gaze_change(avg_gaze)
+    
+    return bpm, self.current_emotion, is_hand_on_face, lip_compression_ratio, gaze_change
     
   def get_bpm(self, image, face):
     cheekL = crop_image(image, topL=face[449], topR=face[350], bottomR=face[429], bottomL=face[280])
@@ -66,3 +70,11 @@ class MetricsCalculator:
 
   def get_lip_ratio(self, face):
     return get_aspect_ratio(face[0], face[17], face[61], face[291])
+  
+  
+  def detect_gaze_change(self, avg_gaze):
+    self.gaze_values = self.gaze_values[1:] + [avg_gaze]
+    gaze_relative_matches = 1.0 * self.gaze_values.count(avg_gaze) / Config.MAX_FRAMES
+    if gaze_relative_matches < .01: # looking in a new direction
+      return True
+    return False
