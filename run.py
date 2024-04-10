@@ -6,7 +6,7 @@ import mediapipe as mp
 from config import Config
 from metrics import MetricsCalculator
 
-from video_processing import find_face_and_hands, draw_landmarks_on_frame
+from video_processing import process_face_and_hands, draw_landmarks
 
 def main():
   parser = argparse.ArgumentParser()
@@ -17,12 +17,6 @@ def main():
 
   if len(args.input) == 1:
       INPUT = int(args.input[0])
-  elif len(args.input) != 4:
-      return print("Wrong number of values for 'input' argument; should be 0, 1, or 4.")
-
-  DRAW_MESH = args.mesh
-  
-  
   
   cap = cv2.VideoCapture(INPUT)
   Config.FPS = cap.get(cv2.CAP_PROP_FPS) # time tell shows should be 1 second
@@ -42,14 +36,14 @@ def main():
       if not success: 
         break
 
-      face_landmarks, hands_landmarks = find_face_and_hands(image, face_mesh, hands)
+      face_landmarks, hands_landmarks = process_face_and_hands(image, face_mesh, hands)
       if not face_landmarks: 
         continue
       
       metrics = metrics_calculator.collect_metrics(image, face_landmarks, hands_landmarks)
       print("Metrics:", metrics)
       
-      draw_landmarks_on_frame(image, face_landmarks, hands_landmarks)
+      if args.mesh: draw_landmarks(image, face_landmarks, hands_landmarks)
       cv2.imshow('face', image)
       if cv2.waitKey(1) & 0xFF == ord('q'):
         break
@@ -60,7 +54,6 @@ def main():
     hands.close()
     cv2.destroyAllWindows()
   
-  
-  
+
 if __name__ == '__main__':
   main()
