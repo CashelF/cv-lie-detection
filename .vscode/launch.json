@@ -5,6 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "run.py",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Run run.py with input video",
             "type": "debugpy",
             "request": "launch",

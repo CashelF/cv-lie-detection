@@ -37,6 +37,14 @@ def main():
   running_avg_lip = []
   running_avg_gaze = []
   running_avg_blink = []
+
+  running_delta_BPM = []
+  running_delta_emotion = []
+  running_delta_hands = []
+  running_delta_lip = []
+  running_delta_gaze = []
+  running_delta_blink = []
+
   counter = 0
   
   try:
@@ -57,15 +65,22 @@ def main():
 
       #in a separate array, store the running average for each frame. This essentially just takes the average of the previous values
       #and adds the current one and averages it out 
+      #do it 
       if(counter==0):
         running_avg_lip.append(metrics[3])
+        running_delta_lip.append(metrics[3])
         running_avg_gaze.append(metrics[4])
+        running_delta_gaze.append(metrics[4])
         running_avg_blink.append(metrics[5])
+        running_delta_blink.append(metrics[5])
 
       else:
         running_avg_lip.append((metrics[3]+running_avg_lip[counter-1])/(counter+1))
+        running_delta_lip.append(metrics[3]-running_avg_lip[counter-1])
         running_avg_gaze.append((metrics[4]+running_avg_gaze[counter-1])/(counter+1))
+        running_delta_gaze.append(metrics[4]-running_avg_gaze[counter-1])
         running_avg_blink.append((metrics[5]+running_avg_blink[counter-1])/(counter+1))
+        running_delta_blink.append(metrics[5]-running_avg_blink[counter-1])
 
       counter+=1
       
