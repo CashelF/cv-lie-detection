@@ -13,7 +13,7 @@ def crop_image(image, top_left, top_right, bottom_right, bottom_left):
     left_x = int((top_left.x + bottom_left.x) / 2 * image.shape[1])
     right_x = int((top_right.x + bottom_right.x) / 2 * image.shape[1])
     
-    return image[top_y:bottom_y, left_x:right_x]
+    return image[top_y:bottom_y, right_x:left_x]
 
 def process_face_and_hands(image, face_mesh, hands_detector):
     """Process the image to detect face and hand landmarks using MediaPipe."""
