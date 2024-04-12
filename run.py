@@ -31,12 +31,9 @@ def main():
 
   face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5, min_tracking_confidence=0.5)
   hands = mp.solutions.hands.Hands(max_num_hands=2, min_detection_confidence=0.7)
-  running_avg_BPM = []
-  running_avg_emotion = []
-  running_avg_hands = []
-  running_avg_lip = []
-  running_avg_gaze = []
-  running_avg_blink = []
+  running_avg_BPM = 0
+  running_avg_lip = 0
+  running_avg_blink = 0
 
   running_delta_BPM = []
   running_delta_emotion = []
@@ -46,6 +43,7 @@ def main():
   running_delta_blink = []
 
   counter = 0
+  gaze_flag = 0
   
   try:
 
@@ -66,21 +64,49 @@ def main():
       #in a separate array, store the running average for each frame. This essentially just takes the average of the previous values
       #and adds the current one and averages it out 
       #do it 
+
+      if(metrics[1] == 'neutral'):
+        running_delta_emotion.append(0)
+      else:
+        running_delta_emotion.append(1) #appends 1 if there is any emotion other than neutral 
+
+      if(metrics[2] == True):
+        running_delta_hands.append(1) #append 1 if hands are detected
+      else:
+        running_delta_hands.append(0)
+
+
+      if(metrics[4] == True): #appends 1 to the delta array if gaze is detected
+        running_delta_gaze.append(1)
+        gaze_flag = 30
+      elif gaze_flag > 0: #appends 1 to the delta array for 30 frames after gaze is detected
+        running_delta_gaze.append(1)
+        gaze_flag -= 1
+      else: #append 0 if gaze is not detected
+        running_delta_gaze.append(0)
+      
+
       if(counter==0):
-        running_avg_lip.append(metrics[3])
-        running_delta_lip.append(metrics[3])
-        running_avg_gaze.append(metrics[4])
-        running_delta_gaze.append(metrics[4])
-        running_avg_blink.append(metrics[5])
-        running_delta_blink.append(metrics[5])
+        if(running_avg_BPM == None):
+          running_avg_BPM = 0
+        else:
+          running_avg_BPM = metrics[0]
+        running_delta_BPM.append(0)
+        running_avg_lip = metrics[3]
+        running_delta_lip.append(0)
+        running_avg_blink = metrics[5]
+        running_delta_blink.append(0)
 
       else:
-        running_avg_lip.append((metrics[3]+running_avg_lip[counter-1])/(counter+1))
-        running_delta_lip.append(metrics[3]-running_avg_lip[counter-1])
-        running_avg_gaze.append((metrics[4]+running_avg_gaze[counter-1])/(counter+1))
-        running_delta_gaze.append(metrics[4]-running_avg_gaze[counter-1])
-        running_avg_blink.append((metrics[5]+running_avg_blink[counter-1])/(counter+1))
-        running_delta_blink.append(metrics[5]-running_avg_blink[counter-1])
+        if(metrics[0] == None):
+          running_delta_BPM.append(0)
+        else:
+          running_delta_BPM.append(metrics[0]-running_avg_BPM)
+          running_avg_BPM = (metrics[0]+running_avg_BPM)/(counter+1)
+        running_delta_lip.append(metrics[3]-running_avg_lip)
+        running_avg_lip = (metrics[3]+ running_avg_lip)/(counter+1)
+        running_delta_blink.append(metrics[5]-running_avg_blink)
+        running_avg_blink = (metrics[5]+running_avg_blink)/(counter+1)
 
       counter+=1
       
