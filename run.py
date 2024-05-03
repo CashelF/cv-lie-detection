@@ -114,7 +114,7 @@ def main():
 
           else:
             if(metrics[0] == None):
-              running_delta_BPM.append(0)
+              running_delta_BPM.append(0) 
             else:
               running_delta_BPM.append(metrics[0]-running_avg_BPM)
               running_avg_BPM = (metrics[0]+running_avg_BPM)/(counter+1)
