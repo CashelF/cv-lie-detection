@@ -12,7 +12,7 @@ class MetricsCalculator:
   def __init__(self):
     self.initialize_metrics()
     self.emotion_detector = FER(mtcnn=True)
-    self.current_emotion = None
+    self.current_emotion = 6
     self.mood_thread = None
     
   def initialize_metrics(self):
@@ -55,9 +55,20 @@ class MetricsCalculator:
     return int(np.mean(valid_bpms))
   
   def async_get_emotion(self, image):
+    emotions = {
+    "angry": 0,
+    "disgust": 1,
+    "fear": 2,
+    "happy": 3,
+    "sad": 4,
+    "surprise": 5,
+    "neutral": 6
+    }
     detected_emotion, score = self.emotion_detector.top_emotion(image)
     if score and (score > .4 or detected_emotion == 'neutral'):
-      self.current_emotion = detected_emotion
+      self.current_emotion = emotions.get(detected_emotion)
+    else:
+      self.current_emotion = 6
 
   def get_lip_ratio(self, face_landmarks):
     lip_points = [face_landmarks[idx] for idx in [0, 17, 61, 291]]
