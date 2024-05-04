@@ -9,7 +9,9 @@ from metrics import MetricsCalculator
 
 from video_processing import process_face_and_hands, draw_landmarks
 from model import NeuralNetworkModel
-from keras.models import load_model
+import tensorflow as tf
+
+import pickle
 
 
 
@@ -136,7 +138,8 @@ def main():
 
   counter = 0
   gaze_flag = 0
-  model = load_model('trained_model.h5')
+  model_filename = 'finalized_xgb_classifier.pkl'
+  model = pickle.load(open(model_filename, 'rb'))
   
   try:
 
@@ -226,16 +229,16 @@ def main():
         "BPM": metrics[0],
         "Emotion": emotions.get(metrics[1]),
         "Hands Detected": "Yes" if metrics[2] else "No",
-        "Lip Movement": metrics[3],
+        "Lip Compression": metrics[3],
         "Gaze Detected": "Yes" if metrics[4] else "No",
         "Blink Rate": metrics[5]
       }
 
       # Predict using the trained model
-      prediction = model.predict(input_data)
-      print("Prediction:", prediction)
+      prediction = model.predict_proba(input_data)
+      print("Prediction:", prediction[0][1])
 
-      draw_meter(image, prediction[0][0])
+      draw_meter(image, prediction[0][1])
       draw_metrics(image, metrics_dict)
 
       counter+=1
