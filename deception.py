@@ -1,6 +1,146 @@
+# deception.py
+import numpy as np
+
+# Constants for tell thresholds and durations
+TELL_MAX_TTL = 30
+SIGNIFICANT_BPM_CHANGE = 8
+LIP_COMPRESSION_RATIO = 0.35
+EYE_BLINK_HEIGHT = 0.15
+
+def new_tell(text, ttl=TELL_MAX_TTL):
+    """
+    Creates a new tell object with a text description and time-to-live (TTL).
+    """
+    return {'text': text, 'ttl': ttl}
+
+def decrement_tells(tells):
+    """
+    Decreases the TTL of all tells in the dictionary and removes those that have expired.
+    """
+    tells_copy = tells.copy()
+    for key, tell in tells_copy.items():
+        tell['ttl'] -= 1
+        if tell['ttl'] <= 0:
+            del tells[key]
+    return tells
+
+def detect_bpm_change(recent_bpms, avg_bpms):
+    """
+    Detects significant changes in BPM (Beats Per Minute) and returns appropriate tells.
+    """
+    bpm_display = "BPM: ..."
+    bpm_change = ""
+    recent_avg_bpm = np.mean(recent_bpms) if len(recent_bpms) > 1 else 0
+    avg_all_bpm = np.mean(avg_bpms) if len(avg_bpms) > 1 else 0
+
+    if abs(recent_avg_bpm - avg_all_bpm) > SIGNIFICANT_BPM_CHANGE:
+        change = "increasing" if recent_avg_bpm > avg_all_bpm else "decreasing"
+        bpm_change = f"Heart rate {change}"
+        bpm_display = f"BPM: {int(recent_avg_bpm)}"
+
+    return bpm_display, bpm_change
+
+def assess_gaze(gaze_measure):
+    """
+    Evaluates the gaze measure to detect significant changes indicating deception.
+    """
+    # Placeholder for logic to assess significant gaze changes
+    if gaze_measure > 0.5:  # example threshold
+        return "Change in gaze direction"
+    return None
+
+def evaluate_blinking(blinks):
+    """
+    Evaluates blinking rate to identify increased or decreased blinking related to deception.
+    """
+    recent_blink_rate = np.mean(blinks[-10:])  # Last 10 frames
+    overall_blink_rate = np.mean(blinks)
+
+    if recent_blink_rate > 1.5 * overall_blink_rate:
+        return "Increased blinking"
+    elif overall_blink_rate > 1.5 * recent_blink_rate:
+        return "Decreased blinking"
+    return None
+
+def check_lip_compression(lip_ratio):
+    """
+    Checks the lip compression ratio to detect signs of stress or deception.
+    """
+    if lip_ratio < LIP_COMPRESSION_RATIO:
+        return "Lip compression observed"
+    return None
+
+def update_tells(tells, new_tells):
+    """
+    Updates the existing tells dictionary with new tells, resetting the TTL if already present.
+    """
+    for tell, text in new_tells.items():
+        if text:
+            tells[tell] = new_tell(text)
+    return tells
+
+def process_deception_indicators(face_data, hand_data, metrics):
+    """
+    Processes various metrics to determine possible deception indicators.
+    """
+    tells = {}
+    # Process each metric to check for deception indicators
+    if 'bpm' in metrics:
+        bpm_display, bpm_change = detect_bpm_change(metrics['recent_bpms'], metrics['avg_bpms'])
+        tells = update_tells(tells, {'bpm_display': bpm_display, 'bpm_change': bpm_change})
+    if 'gaze' in metrics:
+        gaze_tell = assess_gaze(metrics['gaze'])
+        tells = update_tells(tells, {'gaze': gaze_tell})
+    if 'blinks' in metrics:
+        blink_tell = evaluate_blinking(metrics['blinks'])
+        tells = update_tells(tells, {'blinking': blink_tell})
+    if 'lip_ratio' in metrics:
+        lip_tell = check_lip_compression(metrics['lip_ratio'])
+        tells = update_tells(tells, {'lip_compression': lip_tell})
+
+    return tells
+
+def get_area(image, draw, topL, topR, bottomR, bottomL):
+  topY = int((topR.y+topL.y)/2 * image.shape[0])
+  botY = int((bottomR.y+bottomL.y)/2 * image.shape[0])
+  leftX = int((topL.x+bottomL.x)/2 * image.shape[1])
+  rightX = int((topR.x+bottomR.x)/2 * image.shape[1])
+
+  if draw:
+    image = cv2.circle(image, (leftX,topY), 2, (255,0,0), 2)
+    image = cv2.circle(image, (leftX,botY), 2, (255,0,0), 2)
+    image = cv2.circle(image, (rightX,topY), 2, (255,0,0), 2)
+    image = cv2.circle(image, (rightX,botY), 2, (255,0,0), 2)
+
+  return image[topY:botY, rightX:leftX]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from metrics import *
 import threading
-from globals import *
+from config import *
 
 LIP_COMPRESSION_RATIO = .35 # from testing, ~universal
 calculating_mood_lock = threading.Lock()
