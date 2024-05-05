@@ -42,7 +42,7 @@ class MetricsCalculator:
     self.blinks.append(is_blinking) # TODO: update outside of collect metrics for better encapsulation
     
     return [self.get_bpm(), self.current_emotion, is_hand_on_face,
-                lip_compression_ratio, gaze_change, self.get_blink_rate()]
+                lip_compression_ratio, avg_gaze, self.get_blink_rate()]
        
   def get_bpm(self):
     peak_frames, _ = find_peaks(list(self.cheek_color_values),

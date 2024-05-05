@@ -98,3 +98,73 @@ def get_is_blinking(face):
 
     average_eye_aspect_ratio = (eye_right_aspect_ratio + eye_left_aspect_ratio) / 2
     return average_eye_aspect_ratio < EYE_BLINK_HEIGHT
+
+def draw_meter(frame, likelihood):
+    # Define colors
+    red = (0, 0, 255)
+    green = (0, 255, 0)
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+    
+    # Calculate meter position and size
+    x, y, w, h = 50, 50, 200, 20
+    
+    # Calculate filled width based on likelihood
+    filled_w = int(w * likelihood)
+    
+    # Draw outline of meter
+    cv2.rectangle(frame, (x, y), (x + w, y + h), green, -1)
+    
+    # Draw filled portion indicating likelihood
+    cv2.rectangle(frame, (x, y), (x + filled_w, y + h), red, -1)
+    
+    # Add labels with black background
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text_margin = 5
+    
+    # Calculate text size
+    text_size_truth = cv2.getTextSize('Truth', font, 0.5, 1)[0]
+    text_size_lie = cv2.getTextSize('Lie', font, 0.5, 1)[0]
+    
+    # Calculate label positions
+    truth_x = x - text_margin - text_size_truth[0]
+    truth_y = y + h // 2 + text_size_truth[1] // 2
+    lie_x = x + w + text_margin
+    lie_y = y + h // 2 + text_size_lie[1] // 2
+    
+    # Draw black boxes behind the labels
+    truth_box_width = text_size_truth[0] + 2 * text_margin
+    lie_box_width = text_size_lie[0] + 2 * text_margin
+    
+    truth_box_y = y - text_size_truth[1] - text_margin
+    lie_box_y = y - text_size_lie[1] - text_margin
+    
+    cv2.rectangle(frame, (truth_x, truth_box_y), (truth_x + truth_box_width, truth_box_y + text_size_truth[1] + text_margin), black, -1)
+    cv2.rectangle(frame, (lie_x, lie_box_y), (lie_x + lie_box_width, lie_box_y + text_size_lie[1] + text_margin), black, -1)
+    
+    # Draw labels
+    cv2.putText(frame, 'Truth', (truth_x + text_margin, truth_y), font, 0.5, white, 1, cv2.LINE_AA)
+    cv2.putText(frame, 'Lie', (lie_x + text_margin, lie_y), font, 0.5, white, 1, cv2.LINE_AA)
+
+
+def draw_metrics(frame, metrics):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.5
+    font_color = (255, 255, 255)
+    line_height = 20
+    x, y = 20, frame.shape[0] - 20
+    
+    # Calculate the size of the black box
+    max_metric_width = max(cv2.getTextSize(f"{metric_name}: {metric_value}", font, font_scale, 1)[0][0] for metric_name, metric_value in metrics.items())
+    box_width = max_metric_width + 10
+    box_height = len(metrics) * line_height + 10
+    
+    # Adjust the y-coordinate of the black box
+    box_y = frame.shape[0] - box_height
+    
+    # Draw black box behind the text
+    cv2.rectangle(frame, (x - 5, box_y), (x + box_width, y), (0, 0, 0), -1)
+    
+    # Draw metric values
+    for i, (metric_name, metric_value) in enumerate(metrics.items()):
+        cv2.putText(frame, f"{metric_name}: {metric_value}", (x, y - box_height + 5 + i * line_height), font, font_scale, font_color, 1, cv2.LINE_AA)
