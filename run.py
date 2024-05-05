@@ -7,11 +7,11 @@ import numpy as np
 from config import Config
 from metrics import MetricsCalculator
 
-from video_processing import process_face_and_hands, draw_landmarks, draw_meter, draw_metrics
+from video_processing import process_face_and_hands, draw_landmarks
 from model import NeuralNetworkModel
-import tensorflow as tf
+from keras.models import load_model
 
-import pickle
+
 
 def process_input_data(running_delta_BPM, running_delta_emotion, running_delta_hands, running_delta_lip, running_delta_gaze, running_delta_blink):
     # Convert delta arrays to numpy arrays
@@ -27,6 +27,79 @@ def process_input_data(running_delta_BPM, running_delta_emotion, running_delta_h
     input_data = input_data.reshape(1, -1)  # Assuming the model expects a 2D array with one row
     return input_data
 
+def draw_meter(frame, likelihood):
+    # Define colors
+    red = (0, 0, 255)
+    green = (0, 255, 0)
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+    
+    # Calculate meter position and size
+    x, y, w, h = 70, 50, 200, 20
+    
+    # Calculate filled width based on likelihood
+    filled_w = int(w * likelihood)
+    
+    # Draw outline of meter
+    cv2.rectangle(frame, (x, y), (x + w, y + h), green, -1)
+    
+    # Draw filled portion indicating likelihood
+    cv2.rectangle(frame, (x, y), (x + filled_w, y + h), red, -1)
+    
+    # Add labels with black background
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text_margin = 5
+    
+    # Calculate text size
+    text_size_truth = cv2.getTextSize('Truth', font, 0.5, 1)[0]
+    text_size_lie = cv2.getTextSize('Lie', font, 0.5, 1)[0]
+    
+    # Calculate label positions
+    truth_x = x - text_margin - text_size_truth[0] -1
+    truth_y = y + h // 2 + text_size_truth[1] // 2
+    lie_x = x + w + text_margin
+    lie_y = y + h // 2 + text_size_lie[1] // 2
+    
+    # Draw black boxes behind the labels
+    truth_box_width = text_size_truth[0] + 2 * text_margin -2
+    lie_box_width = text_size_lie[0] + 2 * text_margin 
+    
+    # truth_box_y = y - text_size_truth[1] - text_margin
+    # lie_box_y = y - text_size_lie[1] - text_margin
+    truth_box_y = y +1
+    lie_box_y = y +1
+    
+    cv2.rectangle(frame, (truth_x, truth_box_y), (truth_x + truth_box_width, truth_box_y + text_size_truth[1] + text_margin), black, -1)
+    cv2.rectangle(frame, (lie_x, lie_box_y), (lie_x + lie_box_width, lie_box_y + text_size_lie[1] + text_margin), black, -1)
+    
+    # Draw labels
+    cv2.putText(frame, 'Truth', (truth_x + text_margin, truth_y), font, 0.5, white, 1, cv2.LINE_AA)
+    cv2.putText(frame, 'Lie', (lie_x + text_margin, lie_y), font, 0.5, white, 1, cv2.LINE_AA)
+
+
+def draw_metrics(frame, metrics):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.5
+    font_color = (255, 255, 255)
+    line_height = 20
+    x, y = 20, frame.shape[0] - 20
+    
+    # Calculate the size of the black box
+    max_metric_width = max(cv2.getTextSize(f"{metric_name}: {metric_value}", font, font_scale, 1)[0][0] for metric_name, metric_value in metrics.items())
+    box_width = max_metric_width + 10
+    box_height = len(metrics) * line_height + 10
+    
+    # Adjust the y-coordinate of the black box
+    box_y = frame.shape[0] - (box_height+35)
+    
+    # Draw black box behind the text
+    cv2.rectangle(frame, (x - 5, box_y), (x + box_width, y), (0, 0, 0), -1)
+    
+    # Draw metric values
+    for i, (metric_name, metric_value) in enumerate(metrics.items()):
+        cv2.putText(frame, f"{metric_name}: {metric_value}", (x, y - box_height + 5 + i * line_height), font, font_scale, font_color, 1, cv2.LINE_AA)
+
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--input', '-i', nargs='*', default=['0'], help='Input video device (number or path), file, or screen dimensions (x y width height), defaults to 0')
@@ -35,9 +108,9 @@ def main():
   args = parser.parse_args()
 
   if len(args.input) == 1 and args.input[0].isdigit():
-    INPUT = int(args.input[0])
+      INPUT = int(args.input[0])
   else:
-    INPUT = args.input[0]
+      INPUT = args.input[0]
 
   cap = cv2.VideoCapture(INPUT)
   Config.FPS = cap.get(cv2.CAP_PROP_FPS) # time tell shows should be 1 second
@@ -65,8 +138,7 @@ def main():
 
   counter = 0
   gaze_flag = 0
-  model_filename = 'finalized_xgb_classifier.pkl'
-  model = pickle.load(open(model_filename, 'rb'))
+  model = load_model('trained_model.h5')
   
   try:
 
@@ -84,6 +156,10 @@ def main():
       #print("Metrics: BPM, emotion, hands, lip, gaze, blink", metrics)
       
 
+      #in a separate array, store the running average for each frame. This essentially just takes the average of the previous values
+      #and adds the current one and averages it out 
+      #do it 
+
       if(metrics[4] == True): #appends 1 to the delta array if gaze is detected
         running_avg_gaze = 1
         running_delta_gaze.append(1)
@@ -98,7 +174,10 @@ def main():
       
 
       if(counter==0):
-        running_avg_BPM = metrics[0] if metrics[0] != None else 0
+        if(metrics[0] == None):
+          running_avg_BPM = 0
+        else:
+          running_avg_BPM = metrics[0]
         running_delta_BPM.append(0)
         running_avg_emotion = metrics[1]
         running_delta_emotion.append(0)
@@ -136,29 +215,29 @@ def main():
 
 
       emotions = {
-        0: "angry",
-        1: "disgust",
-        2: "fear",
-        3: "happy",
-        4: "sad",
-        5: "surprise",
-        6: "neutral"
+      0: "angry",
+      1: "disgust",
+      2: "fear",
+      3: "happy",
+      4: "sad",
+      5: "surprise",
+      6: "neutral"
       }
     
       metrics_dict = {
         "BPM": metrics[0],
         "Emotion": emotions.get(metrics[1]),
         "Hands Detected": "Yes" if metrics[2] else "No",
-        "Lip Compression": metrics[3],
+        "Lip Compression": "{:.5f}".format(metrics[3]),
         "Gaze Detected": "Yes" if metrics[4] else "No",
-        "Blink Rate": metrics[5]
+        "Blink Rate": "{:.5f}".format(metrics[5])
       }
 
       # Predict using the trained model
-      prediction = model.predict_proba(input_data)
-      print("Prediction:", prediction[0][1])
+      prediction = model.predict(input_data)
+      print("Prediction:", prediction)
 
-      draw_meter(image, prediction[0][1])
+      draw_meter(image, prediction[0][0])
       draw_metrics(image, metrics_dict)
 
       counter+=1
