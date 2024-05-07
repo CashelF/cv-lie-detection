@@ -8,13 +8,8 @@ from config import Config
 from metrics import MetricsCalculator
 
 from video_processing import process_face_and_hands, draw_landmarks, draw_metrics, draw_meter
-from model import NeuralNetworkModel
 
 from joblib import load
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
 
 def main():
   parser = argparse.ArgumentParser()
