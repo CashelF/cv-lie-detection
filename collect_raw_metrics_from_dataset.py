@@ -2,7 +2,7 @@ import os
 import cv2
 import csv
 from metrics import MetricsCalculator
-from video_processing import process_face_and_hands
+from image_processing import process_face_and_hands
 import mediapipe as mp
 
 # Function to extract metrics data from a video

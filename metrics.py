@@ -6,7 +6,7 @@ import threading
 from collections import deque
 
 from config import Config
-from video_processing import check_hand_on_face, get_aspect_ratio, get_avg_gaze, get_is_blinking, get_cheek_intensity
+from image_processing import check_hand_on_face, get_aspect_ratio, get_avg_gaze, get_is_blinking, get_cheek_intensity
 
 class MetricsCalculator:
   def __init__(self):

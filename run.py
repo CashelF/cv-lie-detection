@@ -7,7 +7,7 @@ import pandas as pd
 from config import Config
 from metrics import MetricsCalculator
 
-from video_processing import process_face_and_hands, draw_landmarks, draw_metrics, draw_meter
+from image_processing import process_face_and_hands, draw_landmarks, draw_metrics, draw_meter
 
 from joblib import load
 
