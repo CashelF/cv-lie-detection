@@ -37,10 +37,10 @@ def extract_metrics_from_video(metrics_directory, video_path, label):
             cap.release()
 
 # Process videos in the 'truthful' folder
-# for filename in os.listdir('Real_Life_Deception/Clips/Truthful'):
-#     video_path = os.path.join('Real_Life_Deception/Clips/Truthful', filename)   
-#     metrics_directory = 'video_metrics/truthful'
-#     extract_metrics_from_video(metrics_directory, video_path, 0)
+for filename in os.listdir('Real_Life_Deception/Clips/Truthful'):
+    video_path = os.path.join('Real_Life_Deception/Clips/Truthful', filename)   
+    metrics_directory = 'video_metrics/truthful'
+    extract_metrics_from_video(metrics_directory, video_path, 0)
 
 # Process videos in the 'deceptive' folder
 for filename in os.listdir('Real_Life_Deception/Clips/Deceptive'):

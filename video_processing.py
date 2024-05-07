@@ -107,7 +107,7 @@ def draw_meter(frame, likelihood):
     black = (0, 0, 0)
     
     # Calculate meter position and size
-    x, y, w, h = 50, 50, 200, 20
+    x, y, w, h = 70, 50, 200, 20
     
     # Calculate filled width based on likelihood
     filled_w = int(w * likelihood)
@@ -127,17 +127,17 @@ def draw_meter(frame, likelihood):
     text_size_lie = cv2.getTextSize('Lie', font, 0.5, 1)[0]
     
     # Calculate label positions
-    truth_x = x - text_margin - text_size_truth[0]
+    truth_x = x - text_margin - text_size_truth[0] - 1
     truth_y = y + h // 2 + text_size_truth[1] // 2
     lie_x = x + w + text_margin
     lie_y = y + h // 2 + text_size_lie[1] // 2
     
     # Draw black boxes behind the labels
-    truth_box_width = text_size_truth[0] + 2 * text_margin
+    truth_box_width = text_size_truth[0] + 2 * text_margin - 6
     lie_box_width = text_size_lie[0] + 2 * text_margin
     
-    truth_box_y = y - text_size_truth[1] - text_margin
-    lie_box_y = y - text_size_lie[1] - text_margin
+    truth_box_y = y + 1
+    lie_box_y = y + 1 
     
     cv2.rectangle(frame, (truth_x, truth_box_y), (truth_x + truth_box_width, truth_box_y + text_size_truth[1] + text_margin), black, -1)
     cv2.rectangle(frame, (lie_x, lie_box_y), (lie_x + lie_box_width, lie_box_y + text_size_lie[1] + text_margin), black, -1)
@@ -148,6 +148,25 @@ def draw_meter(frame, likelihood):
 
 
 def draw_metrics(frame, metrics):
+    emotions = {
+        0: "angry",
+        1: "disgust",
+        2: "fear",
+        3: "happy",
+        4: "sad",
+        5: "surprise",
+        6: "neutral"
+    }
+    
+    metrics_dict = {
+        "BPM": metrics[0],
+        "Emotion": emotions[metrics[1]],
+        "Hands Detected": "Yes" if metrics[2] else "No",
+        "Lip Compression": "{:.5f}".format(metrics[3]),
+        "Gaze Detected": "Yes" if metrics[4] else "No",
+        "Blink Rate": "{:.5f}".format(metrics[5])
+    }
+    
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.5
     font_color = (255, 255, 255)
@@ -155,16 +174,16 @@ def draw_metrics(frame, metrics):
     x, y = 20, frame.shape[0] - 20
     
     # Calculate the size of the black box
-    max_metric_width = max(cv2.getTextSize(f"{metric_name}: {metric_value}", font, font_scale, 1)[0][0] for metric_name, metric_value in metrics.items())
+    max_metric_width = max(cv2.getTextSize(f"{metric_name}: {metric_value}", font, font_scale, 1)[0][0] for metric_name, metric_value in metrics_dict.items())
     box_width = max_metric_width + 10
-    box_height = len(metrics) * line_height + 10
+    box_height = len(metrics_dict) * line_height + 10
     
     # Adjust the y-coordinate of the black box
-    box_y = frame.shape[0] - box_height
+    box_y = frame.shape[0] - (box_height + 35)
     
     # Draw black box behind the text
     cv2.rectangle(frame, (x - 5, box_y), (x + box_width, y), (0, 0, 0), -1)
     
     # Draw metric values
-    for i, (metric_name, metric_value) in enumerate(metrics.items()):
+    for i, (metric_name, metric_value) in enumerate(metrics_dict.items()):
         cv2.putText(frame, f"{metric_name}: {metric_value}", (x, y - box_height + 5 + i * line_height), font, font_scale, font_color, 1, cv2.LINE_AA)
